@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,56 +18,58 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
-	"os/user"
+	"path/filepath"
 
 	"github.com/manifoldco/promptui"
+	toml "github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/util/homedir"
 )
+
+// Config contains the relevant fields to create and configure a toml file.
+type Config struct {
+	// Username defines the username of the wakatime user.
+	Username string `toml:"username,multiline,omitempty"`
+	// APIKey is the key associated with a wakatime account.
+	APIKey string `toml:"apikey,multiline,omitempty"`
+	// FilePath describes the path of the toml file.
+	FilePath string `toml:"filepath,multiline,omitempty"`
+}
 
 // setupCmd represents the setup command
 var setupCmd = &cobra.Command{
 	Use:   "setup",
-	Short: "Setup the wakatime configration in ~/.wakatime.cfg",
+	Short: "Setup the wakatime configration in ~/.config/wakatime-view.toml",
 	Run:   prompt,
 }
 
-var (
-	username   string
-	apiKey     string
-	configFile string
-)
-
-func promptUserName() string {
+func (config *Config) PromptUserName() (err error) {
 	validate := func(input string) error {
 		if len(input) < 3 {
-			return errors.New("Username must have more than 3 characters")
+			return errors.New("username must have more than 3 characters")
 		}
 		return nil
 	}
 
-	var username string
-	u, err := user.Current()
-	if err == nil {
-		username = u.Username
-	}
-
 	prompt := promptui.Prompt{
-		Label:    "Username",
+		Label:    "Please enter your username",
 		Validate: validate,
-		Default:  username,
+		Default:  "",
 	}
 
-	result, err := prompt.Run()
+	res, err := prompt.Run()
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return ""
+		return fmt.Errorf("Prompt for username failed %v", err)
 	}
 
-	return result
+	config.Username = res
+
+	return nil
 }
 
-func promptAPIKey() string {
+func (config *Config) PromptAPIKey() (err error) {
 	validate := func(input string) error {
 		if len(input) < 6 {
 			return errors.New("API Key must have more than 6 characters")
@@ -81,28 +83,37 @@ func promptAPIKey() string {
 		Mask:     '*',
 	}
 
-	result, err := prompt.Run()
+	res, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return ""
+		return fmt.Errorf("Unable to get APIKey %w", err)
 	}
 
-	return result
+	config.APIKey = res
+
+	return nil
 }
 
 func prompt(cmd *cobra.Command, args []string) {
-	username = promptUserName()
-	apiKey = promptAPIKey()
-
-	if configFile == "" {
-		configFile = "~/.wakatime-view.cfg"
+	config := Config{}
+	err := config.PromptUserName()
+	if err != nil {
+		log.Fatalf("Prompting the user failed %e", err)
 	}
 
-	// Check ini file exists
+	err = config.PromptAPIKey()
+	if err != nil {
+		log.Fatalf("Prompting the user failed %e", err)
+	}
+
+	if configFile == "" {
+		configFile = filepath.Join(homedir.HomeDir(), ".config", "wakatime-view.toml")
+	}
+
 	if _, err := os.Stat(configFile); err == nil {
 		fmt.Printf("%s already exists. Overwrite? (y/n) ", configFile)
 		prompt := promptui.Prompt{
-			Label: "Overwrite",
+			Label: "The wakatime-view.toml already exists. Overwrite? (y/n)",
 			Validate: func(input string) error {
 				if input != "y" && input != "n" {
 					return errors.New("Please enter y or n")
@@ -112,34 +123,40 @@ func prompt(cmd *cobra.Command, args []string) {
 		}
 		result, err := prompt.Run()
 		if err != nil {
-			fmt.Printf("Prompt failed %v\n", err)
+			fmt.Printf("Unable to create config file %v", err)
 			return
 		}
+
 		if result == "n" {
 			fmt.Println("Exiting...")
 			return
 		}
-	}
+	} else {
 
-	// Write ini config file
-	ini := `[settings]
-username = %s
-api_key = %s
-`
-	ini = fmt.Sprintf(ini, username, apiKey)
-	err := writeFile(configFile, ini)
-	if err != nil {
-		fmt.Printf("Error writing config file: %v\n", err)
-		return
-	}
+		t, err := toml.Marshal(config)
+		if err != nil {
+			fmt.Printf("Unable to create config file %v", err)
+			return
+		}
 
-	fmt.Printf("Username: %s\n", username, apiKey) // nolint: errcheck
+		// Write toml config file
+		data := fmt.Sprintf(
+			`[wakatime]
+username = "%s"
+api_key = "%s"
+`, config.Username, config.APIKey)
+		err := writeFile(configFile, data)
+		if err != nil {
+			fmt.Printf("Error writing config file: %v\n", err)
+			return
+		}
+	}
 }
 
 func writeFile(filename string, data string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file: %v", err)
 	}
 	defer f.Close()
 
