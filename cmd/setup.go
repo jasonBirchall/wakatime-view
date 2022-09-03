@@ -42,7 +42,10 @@ type Config struct {
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Setup the wakatime configration in ~/.config/wakatime-view.toml",
-	Run:   prompt,
+	Run: func(cmd *cobra.Command, args []string) {
+		config := Config{}
+		config.Prompt(cmd, args)
+	},
 }
 
 func (config *Config) PromptUserName() (err error) {
@@ -94,8 +97,9 @@ func (config *Config) PromptAPIKey() (err error) {
 	return nil
 }
 
-func prompt(cmd *cobra.Command, args []string) {
-	config := Config{}
+func (config *Config) Prompt(cmd *cobra.Command, args []string) {
+	// At this point I think we just assume we know where users want to store their config file.
+	defaultConfigFile := filepath.Join(homedir.HomeDir(), ".config", "wakatime-view.toml")
 	err := config.PromptUserName()
 	if err != nil {
 		log.Fatalf("Prompting the user failed %e", err)
@@ -106,12 +110,8 @@ func prompt(cmd *cobra.Command, args []string) {
 		log.Fatalf("Prompting the user failed %e", err)
 	}
 
-	if configFile == "" {
-		configFile = filepath.Join(homedir.HomeDir(), ".config", "wakatime-view.toml")
-	}
-
-	if _, err := os.Stat(configFile); err == nil {
-		fmt.Printf("%s already exists. Overwrite? (y/n) ", configFile)
+	if _, err := os.Stat(defaultConfigFile); err == nil {
+		fmt.Printf("%s already exists. Overwrite? (y/n) ", defaultConfigFile)
 		prompt := promptui.Prompt{
 			Label: "The wakatime-view.toml already exists. Overwrite? (y/n)",
 			Validate: func(input string) error {
@@ -135,17 +135,11 @@ func prompt(cmd *cobra.Command, args []string) {
 
 		t, err := toml.Marshal(config)
 		if err != nil {
-			fmt.Printf("Unable to create config file %v", err)
+			fmt.Printf("Unable to marshal into config file %v", err)
 			return
 		}
 
-		// Write toml config file
-		data := fmt.Sprintf(
-			`[wakatime]
-username = "%s"
-api_key = "%s"
-`, config.Username, config.APIKey)
-		err := writeFile(configFile, data)
+		err = writeFile(defaultConfigFile, t)
 		if err != nil {
 			fmt.Printf("Error writing config file: %v\n", err)
 			return
@@ -153,14 +147,25 @@ api_key = "%s"
 	}
 }
 
-func writeFile(filename string, data string) error {
+func writeFile(filename string, data []byte) error {
+	// If the file already exists, we'll just overwrite it.
 	f, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %v", err)
 	}
-	defer f.Close()
 
-	_, err = f.WriteString(data)
+	defer f.Close()
+	f, err = os.OpenFile("notes.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = f.WriteString("[wakatime]\n")
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %v", err)
+	}
+
+	_, err = f.Write(data)
 	if err != nil {
 		return err
 	}
@@ -180,5 +185,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// setupCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	setupCmd.Flags().StringVarP(&configFile, "config", "c", "", "Config file")
 }
