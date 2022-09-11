@@ -111,7 +111,6 @@ func (config *Config) Prompt(cmd *cobra.Command, args []string) {
 	}
 
 	if _, err := os.Stat(defaultConfigFile); err == nil {
-		fmt.Printf("%s already exists. Overwrite? (y/n) ", defaultConfigFile)
 		prompt := promptui.Prompt{
 			Label: "The wakatime-view.toml already exists. Overwrite? (y/n)",
 			Validate: func(input string) error {
@@ -130,35 +129,39 @@ func (config *Config) Prompt(cmd *cobra.Command, args []string) {
 		if result == "n" {
 			fmt.Println("Exiting...")
 			return
-		}
-	} else {
+		} else {
 
-		t, err := toml.Marshal(config)
-		if err != nil {
-			fmt.Printf("Unable to marshal into config file %v", err)
-			return
-		}
+			t, err := toml.Marshal(config)
+			if err != nil {
+				fmt.Printf("Unable to marshal into config file %v", err)
+				return
+			}
 
-		err = writeFile(defaultConfigFile, t)
-		if err != nil {
-			fmt.Printf("Error writing config file: %v\n", err)
-			return
+			err = writeFile(defaultConfigFile, t)
+			if err != nil {
+				fmt.Printf("Error writing config file: %v\n", err)
+				return
+			}
 		}
 	}
 }
 
 func writeFile(filename string, data []byte) error {
 	// If the file already exists, we'll just overwrite it.
+	// TODO: Figure out how to overwrite the file without deleting it first.
+	if _, err := os.Stat(filename); err == nil {
+		err := os.Remove(filename)
+		if err != nil {
+			return err
+		}
+	}
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %v", err)
 	}
 
 	defer f.Close()
-	f, err = os.OpenFile("notes.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	_, err = f.WriteString("[wakatime]\n")
 	if err != nil {
