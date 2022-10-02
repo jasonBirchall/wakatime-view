@@ -1,18 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
@@ -99,7 +84,7 @@ func (config *Config) PromptAPIKey() (err error) {
 
 func (config *Config) Prompt(cmd *cobra.Command, args []string) {
 	// At this point I think we just assume we know where users want to store their config file.
-	defaultConfigFile := filepath.Join(homedir.HomeDir(), ".config", "wakatime-view.toml")
+	defaultConfigFile := filepath.Join(homedir.HomeDir(), ".config", "wakatime-view", "wakatime-view.toml")
 	err := config.PromptUserName()
 	if err != nil {
 		log.Fatalf("Prompting the user failed %e", err)
@@ -148,7 +133,6 @@ func (config *Config) Prompt(cmd *cobra.Command, args []string) {
 
 func writeFile(filename string, data []byte) error {
 	// If the file already exists, we'll just overwrite it.
-	// TODO: Figure out how to overwrite the file without deleting it first.
 	if _, err := os.Stat(filename); err == nil {
 		err := os.Remove(filename)
 		if err != nil {
