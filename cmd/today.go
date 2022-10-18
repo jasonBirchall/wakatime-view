@@ -16,14 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 )
@@ -48,21 +47,20 @@ var todayCmd = &cobra.Command{
 
 func getToken() (string, error) {
 	// Get token from user dir config
-	file, err := os.Open(filepath.Join(homedir.HomeDir(), ".config", "wakatime-view", "wakatime-view.toml"))
+	defaultConfigFile := filepath.Join(homedir.HomeDir(), ".config", "wakatime-view", "wakatime-view.toml")
+	if _, err := os.Stat(defaultConfigFile); os.IsNotExist(err) {
+		return "", fmt.Errorf("no wakatime config file found")
+	}
+
+	// read defaultConfigFile
+	data, err := os.ReadFile(defaultConfigFile)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(file.Name())
 
-	// Read config file
-	config, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-
-	// Parse config file
+	// parse toml file
 	var c Config
-	err = json.Unmarshal(config, &c)
+	err = toml.Unmarshal(data, &c)
 	if err != nil {
 		return "", err
 	}
