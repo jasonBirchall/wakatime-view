@@ -114,30 +114,26 @@ func (config *Config) Prompt(cmd *cobra.Command, args []string) {
 		if result == "n" {
 			fmt.Println("Exiting...")
 			return
-		} else {
-
-			t, err := toml.Marshal(config)
-			if err != nil {
-				fmt.Printf("Unable to marshal into config file %v", err)
-				return
-			}
-
-			err = writeFile(defaultConfigFile, t)
-			if err != nil {
-				fmt.Printf("Error writing config file: %v\n", err)
-				return
-			}
 		}
 	}
+	t, err := toml.Marshal(config)
+	if err != nil {
+		fmt.Printf("Unable to marshal into config file %v", err)
+		return
+	}
+
+	err = writeFile(defaultConfigFile, t)
+	if err != nil {
+		fmt.Printf("Error writing config file: %v\n", err)
+		return
+	}
+
 }
 
 func writeFile(filename string, data []byte) error {
-	// If the file already exists, we'll just overwrite it.
-	if _, err := os.Stat(filename); err == nil {
-		err := os.Remove(filename)
-		if err != nil {
-			return err
-		}
+	err := os.MkdirAll(filepath.Dir(filename), 0755)
+	if err != nil {
+		return err
 	}
 
 	f, err := os.Create(filename)
