@@ -83,11 +83,12 @@ func today(cmd *cobra.Command, args []string) {
 	client := NewClient("https://wakatime.com/api/v1", token)
 
 	// Get data from wakatime
-	_, err = client.getWakaData("today")
+	res, err := client.getWakaData("users/current/stats")
 	if err != nil {
 		return
 	}
 
+	fmt.Println(res)
 	// // Print data
 	// printWakaData(data)
 }
