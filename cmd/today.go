@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -27,13 +28,16 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-// HTTPClient interface
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
+type Client struct {
+	url   string
+	token string
 }
 
-type Client struct {
-	HTTPClient HTTPClient
+func NewClient(url, token string) Client {
+	return Client{
+		url:   url,
+		token: token,
+	}
 }
 
 // todayCmd represents the today command
@@ -75,15 +79,35 @@ func today(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println("token is", token)
-	// // Get data from wakatime
-	// data, err := getWakaData(token, "today")
-	// if err != nil {
-	// 	return
-	// }
+	// Create client
+	client := NewClient("https://wakatime.com/api/v1", token)
+
+	// Get data from wakatime
+	_, err = client.getWakaData("today")
+	if err != nil {
+		return
+	}
 
 	// // Print data
 	// printWakaData(data)
+}
+
+func (c Client) getWakaData(endpoint string) (string, error) {
+	res, err := http.Get(c.url + "/" + endpoint + "?api_key=" + c.token)
+
+	if err != nil {
+		return "", fmt.Errorf("error getting wakatime data: %w", err)
+	}
+
+	defer res.Body.Close()
+
+	out, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		return "", fmt.Errorf("error reading wakatime data: %w", err)
+	}
+
+	return string(out), nil
 }
 
 func init() {
