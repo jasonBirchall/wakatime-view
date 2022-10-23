@@ -143,11 +143,6 @@ func writeFile(filename string, data []byte) error {
 
 	defer f.Close()
 
-	_, err = f.WriteString("[wakatime]\n")
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %v", err)
-	}
-
 	_, err = f.Write(data)
 	if err != nil {
 		return err
