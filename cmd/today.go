@@ -33,6 +33,14 @@ type Client struct {
 	token string
 }
 
+type Response struct {
+	Data struct {
+		Decimal    string `json:"decimal"`
+		Digital    string `json:"digital"`
+		IsUpToDate bool   `json:"is_up_to_date"`
+	} `json:"data"`
+}
+
 func NewClient(url, token string) Client {
 	return Client{
 		url:   url,
@@ -83,7 +91,8 @@ func today(cmd *cobra.Command, args []string) {
 	client := NewClient("https://wakatime.com/api/v1", token)
 
 	// Get data from wakatime
-	res, err := client.getWakaData("users/current/stats")
+
+	res, err := client.getWakaData("/users/current/summaries?range=today")
 	if err != nil {
 		return
 	}
@@ -95,20 +104,24 @@ func today(cmd *cobra.Command, args []string) {
 
 func (c Client) getWakaData(endpoint string) (string, error) {
 	res, err := http.Get(c.url + "/" + endpoint + "?api_key=" + c.token)
-
 	if err != nil {
 		return "", fmt.Errorf("error getting wakatime data: %w", err)
 	}
 
 	defer res.Body.Close()
 
-	out, err := io.ReadAll(res.Body)
-
+	// j := Response{}
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading wakatime data: %w", err)
 	}
 
-	return string(out), nil
+	// if err := json.Unmarshal(body, &j); err != nil {
+	// 	return "", fmt.Errorf("error unmarshalling wakatime data: %w", err)
+	// }
+
+	fmt.Println(string(body))
+	return "", fmt.Errorf("wakatime data is not up to date")
 }
 
 func init() {
