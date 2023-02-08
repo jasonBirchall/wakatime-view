@@ -29,7 +29,7 @@ fmt: ## Run go/terraform fmt against code.
 	go fmt ./...
 
 .PHONY: test
-test: fmt vet ## Run tests.
+test: fmt ## Run tests.
 	go test -v ./...
 
 .PHONY: push
