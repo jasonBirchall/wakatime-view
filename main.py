@@ -1,23 +1,33 @@
 import typer
 import base64
 import requests
+from pathlib import Path
+import toml
 from rich import print
 
 
 app = typer.Typer()
-wakatime_api = "https://wakatime.com/api/v1/"
+WAKA_API = "https://wakatime.com/api/v1/"
+CONFIG_FILE = Path.home() / ".config" / "wakatime-view" / "wakatime-view.toml"
 
 
 @app.command()
 def today():
-    api_key = typer.prompt("Enter your API key: ")
+    ENDPOINT = "users/current/status_bar/today"
+    api_key: str | None = None
+    if is_config:
+        api_key = get_api_key()
+    else:
+        api_key = typer.prompt("Enter your API key: ")
+    if not api_key:
+        typer.echo("No API key found. Exiting...")
+        raise typer.Exit()
 
-    endpoint = "users/current/status_bar/today"
     base64_bytes = base64.b64encode(api_key.encode("ascii"))
     base64_api_key = base64_bytes.decode("ascii")
     authorization = f"Basic {base64_api_key}"
     headers = {"Authorization": authorization}
-    req = requests.get(wakatime_api + endpoint, headers=headers)
+    req = requests.get(WAKA_API + ENDPOINT, headers=headers)
 
     if req.status_code == 200:
         response = req.json()
@@ -26,12 +36,18 @@ def today():
         print("Error", req)
 
 
-@app.command()
-def goodbye(name: str, formal: bool = False):
-    if formal:
-        typer.echo(f"Goodbye Ms. {name}. Have a good day.")
+def is_config() -> bool:
+    if Path(CONFIG_FILE).is_file():
+        return True
+    return False
+
+
+def get_api_key() -> str | None:
+    config = toml.load(CONFIG_FILE)
+    if config["wakatime"]["api_key"]:
+        return config["wakatime"]["api_key"]
     else:
-        typer.echo(f"Bye {name}!")
+        return None
 
 
 if __name__ == "__main__":
