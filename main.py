@@ -5,7 +5,6 @@ from pathlib import Path
 import toml
 from rich import print
 
-
 app = typer.Typer()
 WAKA_API = "https://wakatime.com/api/v1/"
 CONFIG_FILE = Path.home() / ".config" / "wakatime-view" / "wakatime-view.toml"
@@ -34,6 +33,25 @@ def today():
         print(f"{response['data']['grand_total']['text']}")
     else:
         print("Error", req)
+
+
+@app.command()
+def setup():
+    key = typer.prompt("Enter your API key")
+    if not Path(CONFIG_FILE.parent).is_dir():
+        Path(CONFIG_FILE.parent).mkdir(parents=True)
+    if not Path(CONFIG_FILE).is_file():
+        config = {
+            "wakatime": {
+                "api_key": f"{key}",
+            }
+        }
+        with open(CONFIG_FILE, "w") as f:
+            toml.dump(config, f)
+    else:
+        typer.echo("Config file already exists. Exiting...")
+        raise typer.Exit()
+    typer.echo("Config file created. Please edit the file and add your API key.")
 
 
 def is_config() -> bool:
