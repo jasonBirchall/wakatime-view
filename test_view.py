@@ -5,7 +5,6 @@ from typer.testing import CliRunner
 import view
 
 
-# Test for the "setup" command
 class TestSetupCommand(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
@@ -25,6 +24,13 @@ class TestSetupCommand(unittest.TestCase):
         assert result.exit_code == 0
         print(result.output)
         assert "Config file created. Please edit the file and add your API key." in result.output
+
+    def test_config_file_exists(self):
+        result = self.runner.invoke(view.app, ["setup"], input="123456789")
+        assert result.exit_code == 0
+        result = self.runner.invoke(view.app, ["setup"], input="123456789")
+        assert result.exit_code == 0
+        assert "Config file already exists. Exiting..." in result.output
 
 
 if __name__ == "__main__":
