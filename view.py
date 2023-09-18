@@ -51,7 +51,7 @@ def setup():
     else:
         typer.echo("Config file already exists. Exiting...")
         raise typer.Exit()
-    typer.echo("Config file created. Please edit the file and add your API key.")
+    typer.echo(f"Config file created at: {CONFIG_FILE}")
 
 
 def is_config() -> bool:
